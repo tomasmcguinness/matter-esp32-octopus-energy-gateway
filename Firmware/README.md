@@ -1,3 +1,3 @@
 # Matter Octopus Energy Gateway
 
-This project is a Matter Gateway to Octopus Energy.
+This project is my attempt at building Matter Gateway for Octopus Energy.
