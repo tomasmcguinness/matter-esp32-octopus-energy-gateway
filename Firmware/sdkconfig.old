@@ -580,6 +580,13 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
+# Example Connection Configuration
+#
+CONFIG_EXAMPLE_WIFI_SSID="myssid"
+CONFIG_EXAMPLE_WIFI_PASSWORD="mypassword"
+# end of Example Connection Configuration
+
+#
 # Compiler options
 #
 CONFIG_COMPILER_OPTIMIZATION_DEBUG=y
@@ -2520,7 +2527,8 @@ CONFIG_MRP_MAX_RETRANS=4
 #
 # Network Commissioning Driver Endpoint Id
 #
-# CONFIG_WIFI_NETWORK_COMMISSIONING_DRIVER is not set
+CONFIG_WIFI_NETWORK_COMMISSIONING_DRIVER=y
+CONFIG_WIFI_NETWORK_ENDPOINT_ID=0
 # end of Network Commissioning Driver Endpoint Id
 
 #
@@ -2712,7 +2720,7 @@ CONFIG_ESP_MATTER_CONSOLE_MAX_COMMANDS=10
 #
 # ESP Matter Controller
 #
-CONFIG_ESP_MATTER_CONTROLLER_ENABLE=y
+# CONFIG_ESP_MATTER_CONTROLLER_ENABLE is not set
 # end of ESP Matter Controller
 
 #
