@@ -1,26 +1,56 @@
 <html>
 
 <body>
-    <button type="button" onclick="bluetooth()">Bluetooth</button>
+    <button type="button" onclick="bluetooth()">Connect via Bluetooth</button>
+
+    <label>API KEY</label>
+    <input type="text" placeholder="The API key" />
+
+    <button type="button" onclick="sendApiKey()">Send</button>
 
     <script>
 
+        var g_gatt_server = null;
+
+        function onDisconnected(event) {
+            const device = event.target;
+            console.log(`Device ${device.name} is disconnected.`);
+        }
+
         async function bluetooth() {
 
-            console.log('Here');
-
-            const options = {
-                "acceptAllDevices": true
-            }
+            const options =
+            {
+                filters: [{ namePrefix: "OCTO" }],
+                optionalServices: [0x1815]
+            };
 
             navigator.bluetooth.requestDevice(options)
                 .then(device => {
                     console.log('> Name:             ' + device.name);
                     console.log('> Id:               ' + device.id);
                     console.log('> Connected:        ' + device.gatt.connected);
+
+                    device.addEventListener('gattserverdisconnected', onDisconnected);
+
+                    return device.gatt.connect();
+                })
+                .then(server => {
+                    console.log('Succesfully connected!');
+                    g_gatt_server = server;
                 })
                 .catch(error => {
                     console.log('Argh! ' + error);
+                });
+        }
+
+        async function sendApiKey() {
+            g_gatt_server.getPrimaryService(0x1815)
+                .then(service => service.getCharacteristic("00001525-1212-efde-1523-785feabcd123"))
+                .then(characteristic => characteristic.writeValueWithoutResponse(Uint8Array.of(1)))
+                .then(_ => console.log('Value written.'))
+                .catch(error => {
+                    console.error(error);
                 });
         }
     </script>

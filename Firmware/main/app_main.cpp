@@ -56,7 +56,7 @@ static const ble_uuid128_t led_chr_uuid =
 static int led_chr_access(uint16_t conn_handle, uint16_t attr_handle,
                           struct ble_gatt_access_ctxt *ctxt, void *arg) {
     /* Local variables */
-    int rc;
+    int rc = 0;
 
     /* Handle access events */
     /* Note: LED characteristic is write only */
@@ -133,23 +133,23 @@ static void start_advertising(void) {
 
     /* Set device name */
     name = ble_svc_gap_device_name();
+
+    ESP_LOGI(TAG,"Bluetooth Advertising Name: %s", name);
+
     adv_fields.name = (uint8_t *)name;
     adv_fields.name_len = strlen(name);
     adv_fields.name_is_complete = 1;
 
     /* Set device tx power */
-    adv_fields.tx_pwr_lvl = BLE_HS_ADV_TX_PWR_LVL_AUTO;
-    adv_fields.tx_pwr_lvl_is_present = 1;
+    //adv_fields.tx_pwr_lvl = BLE_HS_ADV_TX_PWR_LVL_AUTO;
+    //adv_fields.tx_pwr_lvl_is_present = 1;
 
-    /* Set device appearance */
-    adv_fields.appearance = BLE_GAP_APPEARANCE_GENERIC_TAG;
-    adv_fields.appearance_is_present = 1;
+    adv_fields.uuids16 = (ble_uuid16_t[]) {
+        BLE_UUID16_INIT(0x1815)
+    };
+    adv_fields.num_uuids16 = 1;
+    adv_fields.uuids16_is_complete = 1;
 
-    /* Set device LE role */
-    adv_fields.le_role = BLE_GAP_LE_ROLE_PERIPHERAL;
-    adv_fields.le_role_is_present = 1;
-
-    /* Set advertiement fields */
     rc = ble_gap_adv_set_fields(&adv_fields);
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to set advertising data, error code: %d", rc);
@@ -157,9 +157,9 @@ static void start_advertising(void) {
     }
 
     /* Set device address */
-    rsp_fields.device_addr = addr_val;
-    rsp_fields.device_addr_type = own_addr_type;
-    rsp_fields.device_addr_is_present = 1;
+    // rsp_fields.device_addr = addr_val;
+    // rsp_fields.device_addr_type = own_addr_type;
+    // rsp_fields.device_addr_is_present = 1;
 
     /* Set URI */
     //rsp_fields.uri = esp_uri;
@@ -185,7 +185,7 @@ static void start_advertising(void) {
     adv_params.itvl_max = BLE_GAP_ADV_ITVL_MS(510);
 
     /* Start advertising */
-    rc = ble_gap_adv_start(own_addr_type, NULL, BLE_HS_FOREVER, &adv_params, gap_event_handler, NULL);
+    rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER, &adv_params, gap_event_handler, NULL);
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to start advertising, error code: %d", rc);
         return;
@@ -194,11 +194,8 @@ static void start_advertising(void) {
 }
 
 static int gap_event_handler(struct ble_gap_event *event, void *arg) {
-    /* Local variables */
     int rc = 0;
-    struct ble_gap_conn_desc desc;
 
-    /* Handle different GAP event */
     switch (event->type) {
 
     /* Connect event */
@@ -255,7 +252,7 @@ int gap_init(void)
 
     ble_svc_gap_init();
 
-    err = ble_svc_gap_device_name_set("OCTO GATEWAY");
+    err = ble_svc_gap_device_name_set("OCTO ENERGY GATEWAY");
 
     if (err != 0)
     {
@@ -377,7 +374,7 @@ static void nimble_host_config_init(void)
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
     /* Store host configuration */
-    ble_store_config_init()
+    //ble_store_config_init()
 }
 
 extern "C" void app_main()
