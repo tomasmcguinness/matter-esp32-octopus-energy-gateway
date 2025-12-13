@@ -165,9 +165,8 @@ static void fetch_prices_task(void *param)
     esp_http_client_config_t config = {
         .url = "https://api.octopus.energy/v1/products/AGILE-24-10-01/electricity-tariffs/E-1R-AGILE-24-10-01-A/standard-unit-rates/",
         .event_handler = _http_event_handler,
-        .user_data = local_response_buffer, // Pass address of local buffer to get response
+        .user_data = local_response_buffer,
         .crt_bundle_attach = esp_crt_bundle_attach,
-        //.disable_auto_redirect = true,
     };
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
@@ -584,29 +583,38 @@ void start_matter()
     node_t *node = node::create(&node_config, NULL, NULL);
     ABORT_APP_ON_FAILURE(node != nullptr, ESP_LOGE(TAG, "Failed to create Matter node"));
 
+    endpoint_t *endpoint = endpoint::create(node, ENDPOINT_FLAG_NONE, NULL);
+    VerifyOrReturnValue(endpoint != nullptr, NULL, ESP_LOGE(TAG, "Failed to create endpoint"));
+
+    cluster_t *cluster = cluster::create(endpoint, CommodityTariff::Id, flags);
+    if (!cluster) {
+        ESP_LOGE(TAG, "Could not create cluster");
+        return NULL;
+    }
+
+    // commoditity_tariff::config_t dish_washer_config;
+    // dish_washer_config.operational_state.delegate = &operational_state_delegate; // Set to nullptr if not using a delegate
+
+    // endpoint_t *endpoint = dish_washer::create(node, &dish_washer_config, ENDPOINT_FLAG_NONE, NULL);
+    // ABORT_APP_ON_FAILURE(endpoint != nullptr, ESP_LOGE(TAG, "Failed to create dishwasher endpoint"));
+
     esp_err_t err = esp_matter::start(app_event_cb);
     ABORT_APP_ON_FAILURE(err == ESP_OK, ESP_LOGE(TAG, "Failed to start Matter, err:%d", err));
 }
 
-static void example_handler_on_sta_got_ip(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+static void on_sta_got_ip(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
     ESP_LOGI(TAG, "Got IPv4 event: Interface \"%s\" address: " IPSTR, esp_netif_get_desc(event->esp_netif), IP2STR(&event->ip_info.ip));
     fetch_prices_task(NULL);
 }
 
-static void example_handler_on_sta_got_ipv6(void *arg, esp_event_base_t event_base,
+static void on_sta_got_ipv6(void *arg, esp_event_base_t event_base,
                                             int32_t event_id, void *event_data)
 {
     ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
     ESP_LOGI(TAG, "Got IPv6 event: Interface \"%s\" address: " IPV6STR, esp_netif_get_desc(event->esp_netif), IPV62STR(event->ip6_info.ip));
     fetch_prices_task(NULL);
-}
-
-static void example_handler_on_wifi_connect(void *esp_netif, esp_event_base_t event_base,
-                                            int32_t event_id, void *event_data)
-{
-    ESP_LOGI(TAG, "STA Connected!");
 }
 
 extern "C" void app_main()
@@ -647,8 +655,6 @@ extern "C" void app_main()
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
     esp_netif_inherent_config_t esp_netif_config = ESP_NETIF_INHERENT_DEFAULT_WIFI_STA();
-    // esp_netif_config.if_desc = EXAMPLE_NETIF_DESC_STA;
-    // esp_netif_config.route_prio = 128;
     esp_netif_create_wifi(WIFI_IF_STA, &esp_netif_config);
     esp_wifi_set_default_wifi_sta_handlers();
 
@@ -662,9 +668,8 @@ extern "C" void app_main()
             .password = CONFIG_EXAMPLE_WIFI_PASSWORD,
         }};
 
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &example_handler_on_sta_got_ip, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_GOT_IP6, &example_handler_on_sta_got_ipv6, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, &example_handler_on_wifi_connect, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &on_sta_got_ip, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_GOT_IP6, &on_sta_got_ipv6, NULL));
 
     ESP_LOGI(TAG, "Connecting to %s...", wifi_config.sta.ssid);
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
