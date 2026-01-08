@@ -12,7 +12,7 @@ It will provide tariff information via the new Matter 1.5 clusters.
 
 ## Setup
 
-Flash the code onto an ESP32 board. I have tested this using an ESP32-C6 DevKit.
+Flash the code onto an ESP32 board. I have tested this using a Seeed Studio XIAO ESP32-C3.
 
 ```
 cd Firmware
