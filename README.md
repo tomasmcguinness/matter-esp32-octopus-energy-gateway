@@ -50,7 +50,7 @@ Check the `custom-commodity-tariff-support` branch
 
 # TODO 
 
-* [] Make date selection dyanmic.
-* [] Populate more than one day.
-* [] Fetch tariff data automatically.
-* [] Allow choice of tariff.
+* [ ] Make date selection dyanmic.
+* [ ] Populate more than one day.
+* [ ] Fetch tariff data automatically.
+* [ ] Allow choice of tariff.
