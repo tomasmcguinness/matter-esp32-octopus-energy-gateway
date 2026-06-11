@@ -30,6 +30,7 @@
 
 #include "simple_tariff_delegate.h"
 #include "agile_tariff_delegate.h"
+#include "intelligent_go_tariff_delegate.h"
 
 static const char *TAG = "app_main";
 
@@ -38,7 +39,7 @@ using namespace chip;
 using namespace chip::app::Clusters;
 using namespace chip::app::Clusters::CommodityTariff;
 
-static AgileTariffDelegate commodity_tariff_delegate;
+static IntelligentGoTariffDelegate commodity_tariff_delegate;
 
 void start_matter();
 
@@ -232,6 +233,103 @@ esp_err_t fetch_prices_trigger(int argc, char *argv[])
     }
 }
 
+esp_err_t fetch_go_prices_trigger(int argc, char *argv[])
+{
+    ESP_LOGI(TAG, "Fetch Intelligent Go prices task has been started!");
+
+    char *local_response_buffer = (char *)malloc(MAX_HTTP_OUTPUT_BUFFER + 1);
+
+    // TODO make the region and period_from/period_to parameters dynamic
+    esp_http_client_config_t config = {
+        .url = "https://api.octopus.energy/v1/products/INTELLI-VAR-22-10-14/electricity-tariffs/E-1R-INTELLI-VAR-22-10-14-A/standard-unit-rates?period_from=2026-01-08T00:00Z&period_to=2026-01-08T23:59Z",
+        .event_handler = _http_event_handler,
+        .user_data = local_response_buffer,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+    };
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+
+    esp_err_t err = esp_http_client_perform(client);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
+        free(local_response_buffer);
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %" PRId64,
+             esp_http_client_get_status_code(client),
+             esp_http_client_get_content_length(client));
+
+    cJSON *root = cJSON_Parse(local_response_buffer);
+
+    if (root == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to parse JSON");
+        free(local_response_buffer);
+        return ESP_FAIL;
+    }
+
+    cJSON *resultsJSON = cJSON_GetObjectItemCaseSensitive(root, "results");
+
+    cJSON *resultJSON = NULL;
+
+    // Intelligent Go is a two-rate tariff. The standard-unit-rates response may return
+    // the rates in any order (and possibly more than two rows), so we identify the
+    // off-peak rate as the cheapest value and the peak rate as the dearest.
+    bool found = false;
+    int minValue = 0;
+    int maxValue = 0;
+
+    cJSON_ArrayForEach(resultJSON, resultsJSON)
+    {
+        cJSON *valueIncVatJSON = cJSON_GetObjectItemCaseSensitive(resultJSON, "value_inc_vat");
+
+        if (valueIncVatJSON == NULL)
+        {
+            continue;
+        }
+
+        ESP_LOGI(TAG, "price: %d", valueIncVatJSON->valueint);
+
+        if (!found)
+        {
+            minValue = valueIncVatJSON->valueint;
+            maxValue = valueIncVatJSON->valueint;
+            found = true;
+        }
+        else
+        {
+            if (valueIncVatJSON->valueint < minValue)
+            {
+                minValue = valueIncVatJSON->valueint;
+            }
+            if (valueIncVatJSON->valueint > maxValue)
+            {
+                maxValue = valueIncVatJSON->valueint;
+            }
+        }
+    }
+
+    if (!found)
+    {
+        ESP_LOGE(TAG, "No prices found in response");
+        cJSON_Delete(root);
+        free(local_response_buffer);
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "Off-peak price: %d, Peak price: %d", minValue, maxValue);
+
+    auto &tariffComponentsAttr = commodity_tariff_delegate.GetTariffComponents();
+    tariffComponentsAttr.Value()[0].price.Value().Value().price = MakeOptional(minValue); // off-peak
+    tariffComponentsAttr.Value()[1].price.Value().Value().price = MakeOptional(maxValue); // peak
+
+    cJSON_Delete(root);
+    free(local_response_buffer);
+
+    return ESP_OK;
+}
+
 static void app_event_cb(const ChipDeviceEvent *event, intptr_t arg)
 {
     switch (event->Type)
@@ -316,6 +414,11 @@ extern "C" void app_main()
             .name = "fetch",
             .description = "Fetches the Octopus Agile prices.",
             .handler = fetch_prices_trigger,
+        },
+        {
+            .name = "fetch-go",
+            .description = "Fetches the Octopus Intelligent Go prices.",
+            .handler = fetch_go_prices_trigger,
         }};
 
     tariff_console.register_commands(tariff_commands, sizeof(tariff_commands) / sizeof(esp_matter::console::command_t));
