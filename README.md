@@ -7,7 +7,11 @@ It provides Octopus Agile tariff information via the new Matter 1.5 Commodity Ta
 This allows other Matter devices in your network to have access to electricity pricing without knowing *anything* about your energy provider.
 
 > [!NOTE]
-> This project is NOT affiliated with Octpus Energy in any way.
+> This project is NOT affiliated with Octopus Energy in any way. It just uses their publically available Tariff information.
+
+# Development
+
+This code is developed using `esp-idf` and `esp-matter`.
 
 # Setup
 
